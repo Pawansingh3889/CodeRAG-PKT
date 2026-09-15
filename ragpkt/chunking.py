@@ -156,8 +156,19 @@ def chunk_notebook_file(path: Path, rel_path: str) -> list[Chunk]:
     return chunks
 
 
-def chunk_repo(repo_root: Path) -> list[Chunk]:
-    """Walk a repo and chunk every file we know how to chunk."""
+def chunk_repo(
+    repo_root: Path,
+    text_window_lines: int = 40,
+    text_overlap: int = 6,
+) -> list[Chunk]:
+    """Walk a repo and chunk every file we know how to chunk.
+
+    text_window_lines/text_overlap only affect .md/.txt/.log files
+    (chunk_text_file's sliding window); Python and notebook chunking are
+    AST/cell-bounded and don't have a "size" to tune. Exposed here, not
+    just as chunk_text_file's own defaults, so eval/eval_chunking.py can
+    ablate them across a whole repo without reaching into internals.
+    """
     all_chunks: list[Chunk] = []
     for path in sorted(repo_root.rglob("*")):
         if not path.is_file():
@@ -173,6 +184,8 @@ def chunk_repo(repo_root: Path) -> list[Chunk]:
         elif ext in NOTEBOOK_EXTS:
             all_chunks.extend(chunk_notebook_file(path, rel_path))
         elif ext in TEXT_EXTS:
-            all_chunks.extend(chunk_text_file(path, rel_path))
+            all_chunks.extend(
+                chunk_text_file(path, rel_path, window_lines=text_window_lines, overlap=text_overlap)
+            )
 
     return all_chunks

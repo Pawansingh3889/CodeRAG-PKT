@@ -19,6 +19,7 @@ import numpy as np
 
 from ragpkt.chunking import Chunk
 from ragpkt.embeddings import embed_query
+from ragpkt.keyword_search import BM25Index
 from ragpkt.vectorstore import VectorStore
 
 
@@ -76,3 +77,38 @@ def retrieve_mmr(
         remaining.remove(best)
 
     return [(cand_chunks[i], float(relevance[i])) for i in selected]
+
+
+def retrieve_hybrid(
+    query: str,
+    store: VectorStore,
+    bm25: BM25Index,
+    k: int = 5,
+    fetch_k: int = 20,
+    rrf_k: int = 60,
+) -> list[tuple[Chunk, float]]:
+    """Combine cosine-vector retrieval and BM25 keyword retrieval via
+    Reciprocal Rank Fusion: each chunk's fused score is the sum of
+    1 / (rrf_k + rank) across whichever ranked list(s) it appears in.
+
+    RRF is used instead of a weighted sum of raw scores because cosine
+    similarity and BM25 scores live on incomparable scales (bounded
+    [-1, 1] vs. an unbounded sum of per-term weights); RRF only needs
+    each list's rank order, not its scores, so there's no normalization
+    constant to tune or get wrong. `rrf_k=60` is the standard default
+    from the original RRF paper, not a magic number picked for this repo.
+    """
+    vector_hits = retrieve(query, store, k=fetch_k)
+    bm25_hits = bm25.search(query, k=fetch_k)
+
+    fused: dict[str, float] = {}
+    chunk_by_id: dict[str, Chunk] = {}
+    for rank, (chunk, _) in enumerate(vector_hits):
+        fused[chunk.id] = fused.get(chunk.id, 0.0) + 1.0 / (rrf_k + rank + 1)
+        chunk_by_id[chunk.id] = chunk
+    for rank, (chunk, _) in enumerate(bm25_hits):
+        fused[chunk.id] = fused.get(chunk.id, 0.0) + 1.0 / (rrf_k + rank + 1)
+        chunk_by_id[chunk.id] = chunk
+
+    ranked_ids = sorted(fused, key=lambda cid: -fused[cid])[:k]
+    return [(chunk_by_id[cid], fused[cid]) for cid in ranked_ids]

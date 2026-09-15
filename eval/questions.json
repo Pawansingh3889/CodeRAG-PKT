@@ -1,22 +1,27 @@
 [
   {
     "question": "How does the BPE tokenizer decide which pair of tokens to merge next?",
-    "expect_keywords": ["frequent", "pair", "merge"]
+    "expect_keywords": ["frequent", "pair", "merge"],
+    "expect_chunk_ids": ["tokenizer/bpe.py::BPETokenizer"]
   },
   {
     "question": "Does the attention implementation use a causal mask, and why does it matter?",
-    "expect_keywords": ["causal", "mask", "future"]
+    "expect_keywords": ["causal", "mask", "future"],
+    "expect_chunk_ids": ["model/attention.py::SelfAttention"]
   },
   {
     "question": "How does the KV cache in generate.py avoid recomputing attention over the whole sequence on every new token?",
-    "expect_keywords": ["cache", "key", "value"]
+    "expect_keywords": ["cache", "key", "value"],
+    "expect_chunk_ids": ["generate.py::generate_cached"]
   },
   {
     "question": "What does train.py's RESUME_FROM environment variable do, and why was it added?",
-    "expect_keywords": ["resume", "checkpoint"]
+    "expect_keywords": ["resume", "checkpoint"],
+    "expect_chunk_ids": ["train.py::main"]
   },
   {
     "question": "How are the model's hyperparameters (n_embd, n_head, n_layer) configured — hardcoded or overridable?",
-    "expect_keywords": ["environment", "variable", "override"]
+    "expect_keywords": ["environment", "variable", "override"],
+    "expect_chunk_ids": ["train.py::module"]
   }
 ]

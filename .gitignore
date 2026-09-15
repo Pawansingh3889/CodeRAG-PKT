@@ -5,3 +5,5 @@ __pycache__/
 .DS_Store
 .ragpkt/
 *.npy
+eval/*.md
+.pytest_cache/
