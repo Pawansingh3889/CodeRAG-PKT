@@ -32,7 +32,12 @@ def build_index(repo_root: Path, out_dir: Path = INDEX_DIR) -> VectorStore:
     return store
 
 
-def load_index(in_dir: Path = INDEX_DIR) -> VectorStore:
+def load_index(in_dir: Path | str = INDEX_DIR) -> VectorStore:
+    # Accepts a plain str, not just a Path: ask.py's argparse `--index`
+    # default is `str(INDEX_DIR)`, and passing that straight through used
+    # to crash on `in_dir / "vectors.npy"` (str has no `/` operator).
+    # Found by actually running `python ask.py`, not by reading the code.
+    in_dir = Path(in_dir)
     if not (in_dir / "vectors.npy").exists():
         raise FileNotFoundError(
             f"No index at {in_dir}. Run `python index.py --repo <path>` first."
