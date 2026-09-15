@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CodeRAG-PKT</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    max-width: 720px; margin: 0 auto; padding: 20px;
+    background: #0b0f14; color: #e7edf3;
+  }
+  h1 { font-size: 1.3rem; margin-bottom: 2px; }
+  p.sub { color: #8b98a5; margin-top: 0; font-size: 0.9rem; }
+  #settings {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    margin: 14px 0; padding: 10px; background: #131a22; border-radius: 10px;
+    font-size: 0.85rem;
+  }
+  #settings label { display: flex; align-items: center; gap: 4px; }
+  select, input[type=text] {
+    background: #1c2530; color: #e7edf3; border: 1px solid #2a3644;
+    border-radius: 6px; padding: 6px 8px; font-size: 0.9rem;
+  }
+  #thread { display: flex; flex-direction: column; gap: 12px; margin-bottom: 90px; }
+  .msg { padding: 10px 14px; border-radius: 10px; max-width: 90%; line-height: 1.45; white-space: pre-wrap; }
+  .user { align-self: flex-end; background: #2563eb; color: white; }
+  .bot { align-self: flex-start; background: #1c2530; }
+  .context {
+    align-self: flex-start; font-size: 0.78rem; color: #8b98a5;
+    background: #10151c; border-radius: 8px; padding: 8px 10px; max-width: 90%;
+  }
+  .context table { border-collapse: collapse; width: 100%; }
+  .context td { padding: 2px 6px; border-bottom: 1px solid #1c2530; }
+  #inputRow {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    display: flex; gap: 8px; padding: 14px;
+    background: #0b0f14; border-top: 1px solid #1c2530;
+    max-width: 720px; margin: 0 auto;
+  }
+  #question { flex: 1; }
+  button { padding: 8px 16px; border-radius: 8px; border: none; background: #2563eb; color: white; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  #status { font-size: 0.8rem; color: #8b98a5; min-height: 1.1em; }
+</style>
+</head>
+<body>
+  <h1>CodeRAG-PKT chat</h1>
+  <p class="sub">Each message is an independent query over the indexed repo, not a threaded conversation, see serve.py.</p>
+
+  <div id="settings">
+    <label>Retriever
+      <select id="retriever">
+        <option value="hybrid" selected>hybrid</option>
+        <option value="baseline">baseline</option>
+        <option value="mmr">mmr</option>
+      </select>
+    </label>
+    <label>Technique
+      <select id="technique">
+        <option value="zero_shot" selected>zero_shot</option>
+        <option value="few_shot">few_shot</option>
+        <option value="chain_of_thought">chain_of_thought</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="rerank" /> rerank</label>
+    <label><input type="checkbox" id="showContext" checked /> show context</label>
+  </div>
+
+  <div id="thread"></div>
+  <div id="status"></div>
+
+  <div id="inputRow">
+    <input type="text" id="question" placeholder="Ask about the indexed repo…" autocomplete="off" />
+    <button id="send">Ask</button>
+  </div>
+
+<script>
+const thread = document.getElementById('thread');
+const statusEl = document.getElementById('status');
+const input = document.getElementById('question');
+const sendBtn = document.getElementById('send');
+
+function addMsg(role, text) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+  div.textContent = text;
+  thread.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth' });
+}
+
+function addContext(retrieved) {
+  const div = document.createElement('div');
+  div.className = 'context';
+  const rows = retrieved.map(([path, name, score]) =>
+    `<tr><td>${path}</td><td>${name || ''}</td><td>${score}</td></tr>`
+  ).join('');
+  div.innerHTML = `<table>${rows}</table>`;
+  thread.appendChild(div);
+}
+
+async function ask() {
+  const question = input.value.trim();
+  if (!question) return;
+  addMsg('user', question);
+  input.value = '';
+  sendBtn.disabled = true;
+  statusEl.textContent = 'Retrieving + generating…';
+
+  try {
+    const res = await fetch('/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question,
+        technique: document.getElementById('technique').value,
+        retriever: document.getElementById('retriever').value,
+        rerank: document.getElementById('rerank').checked,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      addMsg('bot', 'Error: ' + (data.error || res.status));
+    } else {
+      addMsg('bot', data.answer);
+      if (document.getElementById('showContext').checked) {
+        addContext(data.retrieved);
+      }
+    }
+  } catch (err) {
+    addMsg('bot', 'Request failed: ' + err.message);
+  } finally {
+    statusEl.textContent = '';
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+sendBtn.addEventListener('click', ask);
+input.addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
+</script>
+</body>
+</html>

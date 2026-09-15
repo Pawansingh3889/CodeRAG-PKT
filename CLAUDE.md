@@ -20,8 +20,22 @@ pipeline.py    → orchestrates the above; the one file that knows the full flow
 ```
 
 `index.py` builds the index from a `--repo` path. `ask.py` is the CLI entry point.
+`serve.py` is a chat UI (`web/chat.html`) over the same `pipeline.answer()` ask.py
+uses, one independent query per message, no conversation memory yet.
 `eval/run_eval.py` runs the fixed question set through all prompting techniques and
 scores the result; `eval/questions.json` is the fixture, hand-curated, not generated.
+
+Default retriever is `"hybrid"`, not baseline cosine top-k: baseline measurably
+missed real questions (60% vs. 100% recall in `eval/retrieval_report.md`, and live,
+on this project's own flagship README example). `--retriever baseline`/`mmr` stay
+available for comparison, not because either is the recommended default.
+
+Embeddings default to local (`sentence-transformers`, no key); generation defaults
+to whatever `CHAT_BASE_URL`/`CHAT_API_KEY` point at in `.env` (OpenAI if unset).
+Every env var in `ragpkt/embeddings.py` and `ragpkt/generate.py` is read lazily,
+inside a function, not at module import time, callers call `load_dotenv()` after
+importing `ragpkt.pipeline`, so an eager read silently misses `.env` overrides.
+This actually broke generation once already; don't reintroduce it.
 
 ## Dev commands
 

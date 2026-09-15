@@ -16,8 +16,10 @@ Default target: indexes and answers questions about the
 ```
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # then paste your OpenAI API key into .env
+cp .env.example .env
 ```
+Default is $0: local embeddings (sentence-transformers, no key) + Groq's free
+tier for generation. See .env.example for switching either half to OpenAI.
 
 ## Usage
 ```
@@ -28,7 +30,10 @@ python eval/run_eval.py
 python eval/eval_retrieval.py            # precision@k/recall@k: baseline vs. mmr vs. hybrid
 python eval/eval_chunking.py --repo ../AskPKT   # chunk-size ablation
 
-# no OpenAI key needed for these:
+# chat interface (same pipeline, browser instead of one-shot CLI calls):
+python serve.py                          # then open http://localhost:8010
+
+# no key/API calls needed for these:
 pip install -r requirements-dev.txt
 pytest
 ```
@@ -46,7 +51,10 @@ pytest
 - [x] 10. Hybrid search — hand-written BM25 keyword search, fused with cosine vector search via Reciprocal Rank Fusion — `ragpkt/keyword_search.py`, `retrieve_hybrid` in `ragpkt/retrieval.py`. **This is the default retriever** (`ask.py --retriever hybrid`, or no flag at all), not baseline cosine top-k: baseline measurably missed real questions, including this README's own flagship example, live, on 15 Sep 2026 (see eval/retrieval_report.md and Milestone 11 below). `--retriever baseline`/`mmr` are still there for comparison.
 - [x] 11. Retrieval-quality eval — precision@k/recall@k against hand-labeled ground-truth chunk ids, comparing baseline/mmr/hybrid; scores *retrieval*, not generation, so a lucky answer can't hide a bad retrieval — `eval/eval_retrieval.py`
 - [x] 12. Chunk-size ablation — same precision@k/recall@k metric, swept across a (window_lines, overlap) grid for text chunking — `eval/eval_chunking.py`
-- [x] 13. Unit test suite (18 tests, zero OpenAI calls) covering BM25, the precision/recall math, RRF fusion, and the chunking ablation knobs — `tests/`
+- [x] 13. Unit test suite (31 tests, zero OpenAI calls) covering BM25, the precision/recall math, RRF fusion, the chunking ablation knobs, and the chat API — `tests/`
+- [x] 14. Local, free embeddings (sentence-transformers, no key) as the default, OpenAI kept as an opt-in — `ragpkt/embeddings.py`
+- [x] 15. Provider-agnostic generation (any OpenAI-compatible endpoint, verified end to end against Groq's free tier) — `ragpkt/generate.py`
+- [x] 16. Chat interface — same pipeline as `ask.py`, browser UI instead of one-shot CLI calls. No conversation memory yet: each message is still an independent query, see `serve.py`'s own docstring — `serve.py`, `web/chat.html`
 
 ## Design notes
 
