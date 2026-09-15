@@ -22,8 +22,8 @@ cp .env.example .env   # then paste your OpenAI API key into .env
 ## Usage
 ```
 python index.py --repo ../AskPKT
-python ask.py "How does the tokenizer train?"
-python ask.py "Does attention use a causal mask?" --technique chain_of_thought --mmr --rerank --show-context
+python ask.py "How does the tokenizer train?"        # default retriever is hybrid, see below
+python ask.py "Does attention use a causal mask?" --technique chain_of_thought --retriever mmr --rerank --show-context
 python eval/run_eval.py
 python eval/eval_retrieval.py            # precision@k/recall@k: baseline vs. mmr vs. hybrid
 python eval/eval_chunking.py --repo ../AskPKT   # chunk-size ablation
@@ -43,7 +43,7 @@ pytest
 - [x] 7. LLM re-ranking — a second pass that re-scores retrieved chunks for relevance — `ragpkt/rerank.py`
 - [x] 8. End-to-end pipeline — `ragpkt/pipeline.py`
 - [x] 9. Ablation eval — same questions run through all 3 prompting techniques, scored and reported — `eval/run_eval.py`
-- [x] 10. Hybrid search — hand-written BM25 keyword search, fused with cosine vector search via Reciprocal Rank Fusion — `ragpkt/keyword_search.py`, `retrieve_hybrid` in `ragpkt/retrieval.py`
+- [x] 10. Hybrid search — hand-written BM25 keyword search, fused with cosine vector search via Reciprocal Rank Fusion — `ragpkt/keyword_search.py`, `retrieve_hybrid` in `ragpkt/retrieval.py`. **This is the default retriever** (`ask.py --retriever hybrid`, or no flag at all), not baseline cosine top-k: baseline measurably missed real questions, including this README's own flagship example, live, on 15 Sep 2026 (see eval/retrieval_report.md and Milestone 11 below). `--retriever baseline`/`mmr` are still there for comparison.
 - [x] 11. Retrieval-quality eval — precision@k/recall@k against hand-labeled ground-truth chunk ids, comparing baseline/mmr/hybrid; scores *retrieval*, not generation, so a lucky answer can't hide a bad retrieval — `eval/eval_retrieval.py`
 - [x] 12. Chunk-size ablation — same precision@k/recall@k metric, swept across a (window_lines, overlap) grid for text chunking — `eval/eval_chunking.py`
 - [x] 13. Unit test suite (18 tests, zero OpenAI calls) covering BM25, the precision/recall math, RRF fusion, and the chunking ablation knobs — `tests/`

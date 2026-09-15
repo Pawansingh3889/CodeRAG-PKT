@@ -46,32 +46,38 @@ def load_index(in_dir: Path | str = INDEX_DIR) -> VectorStore:
     return VectorStore.load(in_dir)
 
 
+RETRIEVERS = ("baseline", "mmr", "hybrid")
+
+
 def answer(
     question: str,
     store: VectorStore,
     technique: str = "zero_shot",
     k: int = 5,
-    use_mmr: bool = False,
-    use_hybrid: bool = False,
+    retriever: str = "hybrid",
     use_rerank: bool = False,
 ) -> dict:
     """Run the full pipeline for one question. Returns the answer plus the
     intermediate state (retrieved chunks, prompt) so callers/eval can
     inspect what happened, not just the final string.
 
-    use_hybrid wins if both use_hybrid and use_mmr are set: MMR diversifies
-    a single ranked list, hybrid fuses two, mixing both isn't a coherent
-    third strategy, so this picks one rather than silently doing something
-    unspecified.
+    retriever defaults to "hybrid", not "baseline": eval/eval_retrieval.py
+    measured baseline at 60% recall vs. hybrid's 100% on the fixed question
+    set, and baseline separately failed live on this project's own
+    flagship README example ("How does the tokenizer train?") on 15 Sep
+    2026. "baseline" and "mmr" stay available, mainly so eval scripts can
+    still compare against them on purpose.
     """
     if technique not in BUILDERS:
         raise ValueError(f"Unknown technique {technique!r}, choose from {list(BUILDERS)}")
+    if retriever not in RETRIEVERS:
+        raise ValueError(f"Unknown retriever {retriever!r}, choose from {RETRIEVERS}")
 
     fetch_k = k * 3 if use_rerank else k
-    if use_hybrid:
+    if retriever == "hybrid":
         bm25 = BM25Index(store.chunks)
         candidates = retrieve_hybrid(question, store, bm25, k=fetch_k)
-    elif use_mmr:
+    elif retriever == "mmr":
         candidates = retrieve_mmr(question, store, k=fetch_k)
     else:
         candidates = retrieve(question, store, k=fetch_k)

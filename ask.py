@@ -3,7 +3,15 @@
 
 Usage:
     python ask.py "How does the tokenizer train?"
-    python ask.py "..." --technique chain_of_thought --mmr --rerank
+    python ask.py "..." --technique chain_of_thought --retriever mmr --rerank
+
+Default retriever is "hybrid" (cosine + BM25, RRF-fused), not plain cosine
+top-k: baseline measurably misses real questions, including this file's own
+first example above, which returned "the context does not contain any
+information about how the tokenizer is trained" under baseline on 15 Sep
+2026 (see eval/retrieval_report.md: baseline 60% recall vs hybrid 100% on
+the eval set). --retriever baseline is still there for comparison, not
+removed, just no longer the default nobody chose on purpose.
 """
 from __future__ import annotations
 
@@ -23,8 +31,10 @@ def main() -> None:
     parser.add_argument("--index", default=str(INDEX_DIR))
     parser.add_argument("--technique", default="zero_shot", choices=["zero_shot", "few_shot", "chain_of_thought"])
     parser.add_argument("--k", type=int, default=5)
-    parser.add_argument("--mmr", action="store_true", help="Use MMR retrieval for diversity")
-    parser.add_argument("--hybrid", action="store_true", help="Use hybrid retrieval (cosine + BM25, RRF-fused)")
+    parser.add_argument(
+        "--retriever", default="hybrid", choices=["baseline", "mmr", "hybrid"],
+        help="Retrieval strategy (default: hybrid, see module docstring for why)",
+    )
     parser.add_argument("--rerank", action="store_true", help="LLM-rerank candidates before answering")
     parser.add_argument("--show-context", action="store_true", help="Print which chunks were retrieved")
     args = parser.parse_args()
@@ -33,7 +43,7 @@ def main() -> None:
     result = answer(
         args.question, store,
         technique=args.technique, k=args.k,
-        use_mmr=args.mmr, use_hybrid=args.hybrid, use_rerank=args.rerank,
+        retriever=args.retriever, use_rerank=args.rerank,
     )
 
     if args.show_context:
