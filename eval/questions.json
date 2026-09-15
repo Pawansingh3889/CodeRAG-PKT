@@ -1,0 +1,22 @@
+[
+  {
+    "question": "How does the BPE tokenizer decide which pair of tokens to merge next?",
+    "expect_keywords": ["frequent", "pair", "merge"]
+  },
+  {
+    "question": "Does the attention implementation use a causal mask, and why does it matter?",
+    "expect_keywords": ["causal", "mask", "future"]
+  },
+  {
+    "question": "How does the KV cache in generate.py avoid recomputing attention over the whole sequence on every new token?",
+    "expect_keywords": ["cache", "key", "value"]
+  },
+  {
+    "question": "What does train.py's RESUME_FROM environment variable do, and why was it added?",
+    "expect_keywords": ["resume", "checkpoint"]
+  },
+  {
+    "question": "How are the model's hyperparameters (n_embd, n_head, n_layer) configured — hardcoded or overridable?",
+    "expect_keywords": ["environment", "variable", "override"]
+  }
+]
