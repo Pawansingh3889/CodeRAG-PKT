@@ -24,6 +24,7 @@ def main() -> None:
     parser.add_argument("--technique", default="zero_shot", choices=["zero_shot", "few_shot", "chain_of_thought"])
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--mmr", action="store_true", help="Use MMR retrieval for diversity")
+    parser.add_argument("--hybrid", action="store_true", help="Use hybrid retrieval (cosine + BM25, RRF-fused)")
     parser.add_argument("--rerank", action="store_true", help="LLM-rerank candidates before answering")
     parser.add_argument("--show-context", action="store_true", help="Print which chunks were retrieved")
     args = parser.parse_args()
@@ -32,7 +33,7 @@ def main() -> None:
     result = answer(
         args.question, store,
         technique=args.technique, k=args.k,
-        use_mmr=args.mmr, use_rerank=args.rerank,
+        use_mmr=args.mmr, use_hybrid=args.hybrid, use_rerank=args.rerank,
     )
 
     if args.show_context:

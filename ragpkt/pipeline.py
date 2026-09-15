@@ -13,10 +13,11 @@ from pathlib import Path
 
 from ragpkt.chunking import Chunk, chunk_repo
 from ragpkt.embeddings import embed_texts
+from ragpkt.keyword_search import BM25Index
 from ragpkt.prompts import BUILDERS
 from ragpkt.generate import generate
 from ragpkt.rerank import rerank as rerank_chunks
-from ragpkt.retrieval import retrieve, retrieve_mmr
+from ragpkt.retrieval import retrieve, retrieve_hybrid, retrieve_mmr
 from ragpkt.vectorstore import VectorStore
 
 INDEX_DIR = Path(".ragpkt/index")
@@ -51,16 +52,29 @@ def answer(
     technique: str = "zero_shot",
     k: int = 5,
     use_mmr: bool = False,
+    use_hybrid: bool = False,
     use_rerank: bool = False,
 ) -> dict:
     """Run the full pipeline for one question. Returns the answer plus the
     intermediate state (retrieved chunks, prompt) so callers/eval can
-    inspect what happened, not just the final string."""
+    inspect what happened, not just the final string.
+
+    use_hybrid wins if both use_hybrid and use_mmr are set: MMR diversifies
+    a single ranked list, hybrid fuses two, mixing both isn't a coherent
+    third strategy, so this picks one rather than silently doing something
+    unspecified.
+    """
     if technique not in BUILDERS:
         raise ValueError(f"Unknown technique {technique!r}, choose from {list(BUILDERS)}")
 
     fetch_k = k * 3 if use_rerank else k
-    candidates = retrieve_mmr(question, store, k=fetch_k) if use_mmr else retrieve(question, store, k=fetch_k)
+    if use_hybrid:
+        bm25 = BM25Index(store.chunks)
+        candidates = retrieve_hybrid(question, store, bm25, k=fetch_k)
+    elif use_mmr:
+        candidates = retrieve_mmr(question, store, k=fetch_k)
+    else:
+        candidates = retrieve(question, store, k=fetch_k)
 
     if use_rerank:
         candidates = rerank_chunks(question, candidates, keep=k)
